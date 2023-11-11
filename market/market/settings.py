@@ -164,7 +164,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'uk'
 
-TIME_ZONE = os.getenv('TIME_ZONE', 'US/Eastern')
+TIME_ZONE = os.getenv('TIME_ZONE', 'Europe/Kiev')
 
 # It's a time zone that is used for 'StartTime' in 'RemittanceAvailabilityRequestSerializer' and in tests.
 # Maybe need to remote this setting and to use 'TIME_ZONE'
@@ -218,16 +218,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'user.User'
 
 
-SWAGGER_ENABLED = to_bool(os.getenv('SWAGGER_ENABLED'))  # turned off by default
-SWAGGER_SECURITY_DEFINITIONS_CLIENT_HEADERS = "Client's headers"
-SWAGGER_SETTINGS = {
-    # https://drf-yasg.readthedocs.io/en/stable/settings.html#default-model-rendering
-    'DEFAULT_MODEL_RENDERING': 'example',
-    'DEFAULT_MODEL_DEPTH': 4,
-    'DEEP_LINKING': True,
-    'USE_SESSION_AUTH': False,
-}
-
 if DEBUG:
     import socket
 
@@ -237,19 +227,6 @@ if DEBUG:
     hostname, _, ips = socket.gethostbyname_ex(socket.gethostname())
     INTERNAL_IPS = [ip[:-1] + '1' for ip in ips] + ['127.0.0.1', '10.0.2.2']
 
-# for Gitlab junit
-TEST_OUTPUT_FILE_NAME = 'tests_report.xml'
-TEST_RUNNER = 'xmlrunner.extra.djangotestrunner.XMLTestRunner'
-
-# SSO (https://github.com/ivanbat1/django-admin.git)
-ACCESS_TOKEN_SECRET_KEY = os.getenv('ACCESS_TOKEN_SECRET_KEY')
-ACCESS_TOKEN_COOKIE_DOMAIN = os.getenv('ACCESS_TOKEN_COOKIE_DOMAIN')
-
-# Note 'max_length' of 'id' CharField in 'JumioSession' table
-JUMIO_IDENTITY_SESSION_TOKEN_LENGTH = 30
-
-# It's number of inline objects in Admin panel. Lib: django_admin_inline_paginator.
-NUMBER_OF_OBJECTS_PER_PAGE_INLINE = 10
 
 # INFO logs required to capture log events and metric
 # can be increased to ERROR on dev environments to save us from the global warming
@@ -293,12 +270,9 @@ LOGGING = {
         },
     },
 }
-
 DEFAULT_EXCEPTION_REPORTER = 'apps.core.debug.JSONExceptionReporter'
 DEFAULT_EXCEPTION_REPORTER_FILTER = 'apps.core.debug.JSONSafeExceptionReporterFilter'
 
-
-PAYMENT_PUBLIC_HOST = os.getenv('PAYMENT_PUBLIC_HOST', 'http://127.0.0.1:8000').rstrip('/')
 
 # we use this to pass with messages to EventBus, because we have only one bus per account
 PROD_ENV_NAME = 'PROD'
@@ -317,26 +291,7 @@ AWS_EVENT_BUS_NAME = os.getenv('AWS_EVENT_BUS_NAME')
 SQS_QUEUE_URL = os.getenv('SQS_QUEUE_URL')
 SQS_QUEUE_ARN = os.getenv('SQS_QUEUE_ARN')
 if not SQS_QUEUE_ARN:
-    logging.error("'SQS_QUEUE_ARN' is not defined. Async tasks schedules will be ignored")
+    logging.warning("'SQS_QUEUE_ARN' is not defined. Async tasks schedules will be ignored")
 SCHEDULER_RUN_TASK_ROLE_ARN = os.getenv('SCHEDULER_RUN_TASK_ROLE_ARN')
 if not SCHEDULER_RUN_TASK_ROLE_ARN:
-    logging.error("'SCHEDULER_RUN_TASK_ROLE_ARN' is not defined. Async tasks schedules will be ignored")
-
-
-WELLS_FARGO_HOST = os.getenv("WELLS_FARGO_HOST", "https://api-sandbox.wellsfargo.com")
-WELLS_FARGO_COMPANY_ID = os.getenv("WELLS_FARGO_COMPANY_ID")
-WELLS_FARGO_CONSUMER_KEY = os.getenv("WELLS_FARGO_CONSUMER_KEY")
-WELLS_FARGO_CONSUMER_SECRET = os.getenv("WELLS_FARGO_CONSUMER_SECRET")
-WELLS_FARGO_GATEWAY_ID = os.getenv("WELLS_FARGO_GATEWAY_ID")
-WELLS_TRANSACTION_PULL_DELAY = int(os.getenv("WELLS_TRANSACTION_PULL_DELAY", 3 * 60))
-
-CYBERSOURCE_HOST_NAME = os.getenv("CYBERSOURCE_HOST_NAME", "apitest.cybersource.com")
-CYBERSOURCE_MERCHANT_ID = os.getenv("CYBERSOURCE_MERCHANT_ID", "test")
-CYBERSOURCE_KEY_ID = os.getenv("CYBERSOURCE_KEY_ID", "00000000-0000-0000-0000-000000000000")
-CYBERSOURCE_SECRET_KEY = os.getenv("CYBERSOURCE_SECRET_KEY", "yy1es=")
-
-
-CYBERSOURCE_HOSTED_PAY_URL = os.getenv("CYBERSOURCE_HOSTED_PAY_URL", "https://secureacceptance.cybersource.com/pay")
-CYBERSOURCE_HOSTED_PROFILE_ID = os.getenv("CYBERSOURCE_HOSTED_PROFILE_ID", "")
-CYBERSOURCE_HOSTED_ACCESS_KEY = os.getenv("CYBERSOURCE_HOSTED_ACCESS_KEY", "")
-CYBERSOURCE_HOSTED_SECRET_KEY = os.getenv("CYBERSOURCE_HOSTED_SECRET_KEY", "")
+    logging.warning("'SCHEDULER_RUN_TASK_ROLE_ARN' is not defined. Async tasks schedules will be ignored")

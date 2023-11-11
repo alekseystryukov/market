@@ -4,7 +4,7 @@ Parameters:
   ImageUri:
     Type: String
     Description: "App image uri"
-    Default: "367570673549.dkr.ecr.us-east-1.amazonaws.com/robot-tests-repository:1.0.1"
+    Default: "987296473044.dkr.ecr.eu-central-1.amazonaws.com/market-api:latest"
   AppName:
     Description: Application Name
     Type: String
@@ -14,10 +14,21 @@ Parameters:
     Description: An environment name that is prefixed to resource names
     Type: String
     Default: "DEV"
-  AdministratorEmailAddress:
+  SecretKey:
     Type: String
-    Description: "an email address for unhandled errors from the applications"
-    Default: "admin@example.com"
+  AllowedHosts:
+    Type: String
+    Default: "*"
+  PostgresHost:
+    Type: String
+  PostgresName:
+    Type: String
+  PostgresUser:
+    Type: String
+  PostgresPass:
+    Type: String
+  DBSecurityGroup:
+    Type: String
 
 Resources:
   # create ECS resources
@@ -56,7 +67,8 @@ Resources:
     Properties:
       GroupName: "container-ingress-sg"
       GroupDescription: "Security group with an ingress rule for containers"
-      VpcId: !Ref VPC
+      VpcId:
+        Fn::ImportValue: 'VPC'
       SecurityGroupIngress:
         FromPort: 8000
         ToPort: 8000
@@ -93,21 +105,52 @@ Resources:
         - Name: app
           Image: !Ref ImageUri
           Essential: true
+          EntryPoint:
+            - sh
+            - -c
+          Command:
+            - python manage.py migrate && gunicorn --bind :8000 --workers 1 --threads 4 market.wsgi:application
+          PortMappings:
+            - HostPort: 8000
+              ContainerPort: 8000
+              Protocol: tcp
           Environment: # the same as in the lambda Environment.Variables but in a different format
             - Name: AWS_ACCOUNT_ID
               Value: !Ref "AWS::AccountId"
             - Name: ENV_NAME
               Value: !Ref EnvName
-            - Name: S3_BUCKET
-              Value: "{{resolve:secretsmanager:RCCommonConfigSecret:SecretString:CommonPublicS3BucketName}}"
-            - Name: S3_PREFIX
-              Value: !Sub "/ttl21days/${AppName}/${EnvName}"
-            - Name: S3_URL  # CommonPublicS3BucketUrl
+            - Name: DEBUG
+              Value: false
+            - Name: ALLOWED_HOSTS
+              Value: !Ref AllowedHosts
+            - Name: SECRET_KEY
+              Value: !Ref SecretKey
+            - Name: POSTGRES_HOST
+              Value: !Ref PostgresHost
+            - Name: POSTGRES_NAME
+              Value: !Ref PostgresName
+            - Name: POSTGRES_USER
+              Value: !Ref PostgresUser
+            - Name: POSTGRES_PASSWORD
+              Value: !Ref PostgresPass
+            - Name: STATIC_URL
               Value: !Sub
-                - "${BucketUrl}/ttl21days/${AppName}/${EnvName}"
-                - BucketUrl: "{{resolve:secretsmanager:RCCommonConfigSecret:SecretString:CommonPublicS3BucketUrl}}"
-            - Name: SLACK_WEBHOOK_URI
-              Value: "{{resolve:secretsmanager:RCCommonConfigSecret:SecretString:SlackWebHookUri}}"
+                 - "${BucketUrl}/${AppName}/${EnvName}/static/"
+                 - BucketUrl:
+                     Fn::ImportValue: 'MediaS3BucketUrl'
+            - Name: S3_STATIC_BUCKET
+              Value:
+                Fn::ImportValue: 'MediaS3BucketName'
+            - Name: S3_STATIC_BUCKET_PREFIX
+              Value: !Sub "/${AppName}/${EnvName}"
+            - Name: AWS_STORAGE_BUCKET_NAME
+              Value:
+                Fn::ImportValue: 'MediaS3BucketName'
+            - Name: AWS_STORAGE_BUCKET_PREFIX
+              Value: !Sub "/${AppName}/${EnvName}"
+            - Name: ERROR_SNS_TOPIC
+              Value:
+                Fn::ImportValue: 'ErrorsEmailSNSTopicArn'
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -119,53 +162,73 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub "/aws/ecs/${EnvName}/${AppName}"
-      RetentionInDays: 30
+      RetentionInDays: 7
 
-  # allow pipeline user updating this stack
-  PipelineUserPermission:
-    Type: AWS::IAM::Policy
+  ECSService: # http requests listener service
+    Type: AWS::ECS::Service
+    DependsOn:
+      - RoleAdditionalPermissions  # service need all the permissions to run (it runs while being created)
     Properties:
-      PolicyName: !Sub "${EnvName}${AppName}AllowPipelineUserUpdateStack"
-      Users:
-        - Fn::ImportValue: !Sub "RC${EnvName}${AppName}PipelineUser"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - "cloudformation:DescribeStacks"
-              - "cloudformation:UpdateStack"
-            Resource: !Ref AWS::StackId
-          - Effect: Allow # all required permissions should be added to this role in 'common-resources' template
-            Action:
-              - "iam:PassRole"
-            Resource: "{{resolve:secretsmanager:RCCommonConfigSecret:SecretString:CloudformationRoleArn}}"
+      Cluster: !Ref Cluster
+      LaunchType: FARGATE
+      DesiredCount: 1
+      PropagateTags: TASK_DEFINITION
+      SchedulingStrategy: REPLICA
+      ServiceName: !Sub "${EnvName}${AppName}Service"
+      TaskDefinition: !Ref ECSTaskDefinition
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets:
+            - Fn::ImportValue: "VPCPublicSubnet1"
+            - Fn::ImportValue: "VPCPublicSubnet2"
+          SecurityGroups:
+            - !Ref DBSecurityGroup
+            - !Ref ContainerIngressSecurityGroup
 
-  # scheduled command calls, 'Cron'
-  ScheduledRobotTestRunRule:
+
+  # rule and permission
+  OnSuccessDeployTaskRule:
     Type: AWS::Events::Rule
     Properties:
-      Description: "Run robot tests"
-      Name: !Sub "${EnvName}${AppName}ScheduledRobotTestRunRule"
+      Description: "Run django collectstatic & migrate on deploy"
+      Name: !Sub "${EnvName}${AppName}Init"
       State: ENABLED
-      ScheduleExpression: "cron(0 17 ? * MON-FRI *)"
+      EventPattern:
+        source:
+          - aws.cloudformation
+        detail-type:
+          - "CloudFormation Stack Status Change"
+        detail:
+          stack-id:
+            - !Ref "AWS::StackId"
+          status-details:
+            status:
+              - "CREATE_COMPLETE"
+              - "UPDATE_COMPLETE"
       Targets:
-        - Arn:
-            Fn::ImportValue: 'RCClusterArn'
+        - Arn: !GetAtt Cluster.Arn
+          Id: !Sub "${EnvName}${AppName}FinishDeployTask"
           RoleArn: !GetAtt EventBridgeRunTaskRole.Arn
-          Id: !Sub "${EnvName}${AppName}ScheduledRobotRun"
+          Input: !Sub |
+            {
+              "containerOverrides": [{
+                "name": "app",
+                "command": [
+                  "python manage.py finalise_deploy"
+                ]
+              }]
+            }
           EcsParameters:
             TaskCount: 1
             TaskDefinitionArn: !Ref ECSTaskDefinition
             LaunchType: FARGATE
             NetworkConfiguration:
               AwsVpcConfiguration:
-                AssignPublicIp: DISABLED
+                AssignPublicIp: ENABLED
                 Subnets:
-                  - "{{resolve:secretsmanager:RCCommonConfigSecret:SecretString:PrivateSubnetAZ0}}"
-                  - "{{resolve:secretsmanager:RCCommonConfigSecret:SecretString:PrivateSubnetAZ1}}"
-          DeadLetterConfig:
-            Arn: "{{resolve:secretsmanager:RCCommonConfigSecret:SecretString:DeadLetterQueueArn}}"
+                  - Fn::ImportValue: "VPCPublicSubnet1"
+                  - Fn::ImportValue: "VPCPublicSubnet2"
 
   EventBridgeRunTaskRole: # used for target invocation from EventBridge
     Type: AWS::IAM::Role
@@ -196,7 +259,7 @@ Resources:
                   StringLike:
                     iam:PassedToService: ecs-tasks.amazonaws.com
 
-  RoleAdditionalPermissions:
+  RoleAdditionalPermissions: # added to ExecutionRole below to evade circular links
     Type: AWS::IAM::Policy
     Properties:
       PolicyName: !Sub "${EnvName}${AppName}RolePermissions"
@@ -206,10 +269,6 @@ Resources:
         Version: "2012-10-17"
         Statement:
           - Effect: Allow
-            Action: "secretsmanager:GetSecretValue"
-            Resource:
-              - Fn::ImportValue: !Sub "${EnvName}${AppName}EnvSecretArn"
-          - Effect: Allow
             Action:
               - "logs:CreateLogGroup"
               - "logs:PutLogEvents"
@@ -218,11 +277,23 @@ Resources:
               - !GetAtt ECSLogsLogGroup.Arn
           - Effect: Allow
             Action:
-              - "s3:ListBucket"
-            Resource: "{{resolve:secretsmanager:RCCommonConfigSecret:SecretString:CommonPublicS3BucketArn}}"
+              - 's3:ListBucket'
+            Resource:
+              - Fn::ImportValue: 'MediaS3BucketArn'
           - Effect: Allow
             Action:
               - "s3:PutObject"
               - "s3:PutObjectAcl"
+              - "s3:GetObject"
+              - "s3:GetObjectAcl"
+              - "s3:GetObjectAttributes"
             Resource:
-              - !Sub "{{resolve:secretsmanager:RCCommonConfigSecret:SecretString:CommonPublicS3BucketArn}}/ttl21days/${AppName}/${EnvName}/*"
+              - !Sub
+                - "${BucketArn}/${AppName}/${EnvName}/*"
+                - BucketArn:
+                    Fn::ImportValue: 'MediaS3BucketArn'
+          - Effect: Allow
+            Action:
+              - "SNS:Publish"
+            Resource:
+              Fn::ImportValue: 'ErrorsEmailSNSTopicArn'

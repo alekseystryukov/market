@@ -22,8 +22,8 @@ Resources:
     Type: AWS::EC2::VPC
     Properties:
       CidrBlock: !Ref VpcCIDR
-      EnableDnsSupport: false
-      EnableDnsHostnames: false
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
 
   InternetGateway:
     Type: AWS::EC2::InternetGateway
@@ -76,14 +76,6 @@ Resources:
       SubnetId: !Ref PublicSubnet2
 
 
-# security groups
-  DBSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupName: "ingress-sg"
-      GroupDescription: "Database security group. Should be added to RDS and any resource can access it."
-      VpcId: !Ref VPC
-
 # database
   SubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
@@ -125,11 +117,6 @@ Outputs:
     Value: !Ref PublicSubnet2
     Export:
       Name: "VPCPublicSubnet2"
-
-  DBSecurityGroup:
-    Value: !Ref DBSecurityGroup
-    Export:
-      Name: "VPCDBSecurityGroup"
 
   SubnetGroup:
     Value: !Ref SubnetGroup
