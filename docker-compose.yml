@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+    user: raccoon
+    entrypoint: [ "/usr/local/bin/python", "manage.py" ]
+#    entrypoint: [ "python", "-m" ]
+    command: [ "runserver", "0.0.0.0:8000" ]
+#    command: [ "market.sqs_consumer" ]
+    ports:
+      - ${API_PORT}:8000
+    volumes:
+      - ./market/:/function/
+    env_file:
+      - .env
+    depends_on:
+      - db
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+    volumes:
+      - "db-data:/var/lib/postgresql/data"
+
+
+volumes:
+  db-data:

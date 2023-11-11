@@ -1,0 +1,88 @@
+name: Build & Deploy to RC DEV
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build:
+    name: "Builds and publishes a docker image"
+    runs-on: ubuntu-latest
+    environment: "RC DEV"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@13d241b293754004c80624b5567555c4a39ffbe3
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@aaf69d68aa3fb14c1d5a6be9ac61fe15b48453a2
+
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+          IMAGE_TAG: ${{ github.ref_name }}
+        run: |
+          # Build a docker container and
+          # push it to ECR so that it can be deployed.
+          make write-versions-file
+          docker build --build-arg version=$IMAGE_TAG -t $ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REPOSITORY:$IMAGE_TAG
+          echo "image=$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+  deploy:
+    name: "Deploys the image"
+    needs: build
+    runs-on: ubuntu-latest
+    environment: "RC DEV"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@13d241b293754004c80624b5567555c4a39ffbe3
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Update the CloudFormation stack
+        env:
+          ECR_REPOSITORY_NAME: ${{ secrets.ECR_REPOSITORY_NAME }}
+          IMAGE_TAG: ${{ github.ref_name }}
+          AWS_CLOUDFORMATION_ROLE_ARN: ${{ secrets.AWS_CLOUDFORMATION_ROLE_ARN }}
+          AWS_DEV_STACK_NAME: ${{ secrets.AWS_DEV_STACK_NAME }}
+          AWS_APP_NAME: PaymentEngine
+          ENV: DEV
+        run: |
+          aws cloudformation update-stack \
+            --stack-name $AWS_DEV_STACK_NAME \
+            --role-arn $AWS_CLOUDFORMATION_ROLE_ARN \
+            --use-previous-template \
+            --capabilities CAPABILITY_IAM \
+            --parameters \
+            ParameterKey=AppName,ParameterValue=$AWS_APP_NAME \
+            ParameterKey=EnvName,ParameterValue=$ENV \
+            ParameterKey=RepositoryName,ParameterValue=$ECR_REPOSITORY_NAME \
+            ParameterKey=ImageTag,ParameterValue=$IMAGE_TAG
+
+      - name: Wait update complete
+        env:
+          AWS_DEV_STACK_NAME: ${{ secrets.AWS_DEV_STACK_NAME }}
+        run: |
+          aws cloudformation wait stack-update-complete \
+            --stack-name $AWS_DEV_STACK_NAME
+          aws cloudformation describe-stacks \
+            --stack-name $AWS_DEV_STACK_NAME

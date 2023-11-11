@@ -1,0 +1,32 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrahead %}
+    {% include 'icons.html' %}
+    <link rel="stylesheet" href="{% static 'admin/css/custom_admin.css' %}">
+    <style>
+        #site-name:after {
+            content: " [{{ settings.ENV_NAME }}]";
+            font-weight: bold;
+            color: #00008b;
+        }
+    </style>
+    <script data-envname="{{ settings.ENV_NAME }}">
+        const envName = document.currentScript.dataset.envname;
+
+        // Avoid flashes of a light theme.
+        const currentTheme = localStorage.getItem("theme");
+        document.documentElement.dataset.theme = currentTheme || "auto";
+
+        window.addEventListener("load", function (e) {
+
+            if (!localStorage.getItem("theme")) {
+                envName === "PROD" ? localStorage.setItem("theme", "light") : localStorage.setItem("theme", "dark");
+            }
+
+        });
+    </script>
+    <script type="text/javascript">
+        const draggableImageUrl = "{% static 'images/drag.svg' %}"
+    </script>
+{% endblock %}

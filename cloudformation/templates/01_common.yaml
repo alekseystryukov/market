@@ -1,0 +1,110 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Common resources for environments and services inside a VPC
+
+
+Resources:
+  MediaS3Bucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain  # if not empty CloudFormation prevents deleting anyway, so choose yourself
+    Properties:
+      AccessControl: Private  # later, we make all the files public using acl, because of the "security reasons"
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerPreferred
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      WebsiteConfiguration:
+        IndexDocument: index.html
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - "*"
+            AllowedMethods:
+              - GET
+            AllowedOrigins:
+              - "*"
+            ExposedHeaders:
+              - Date
+            Id: myCORSRuleId1
+            MaxAge: 3600
+
+
+  RobotRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: market-robot
+#      ImageTagMutability: "IMMUTABLE"
+      ImageScanningConfiguration:
+        ScanOnPush: false
+
+  MarketRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: market-api
+      #      ImageTagMutability: "IMMUTABLE"
+      ImageScanningConfiguration:
+        ScanOnPush: false
+
+
+  PipelineUser:
+    Type: AWS::IAM::User
+
+  PipelineUserAccessKey:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      UserName: !Ref PipelineUser
+
+  AllowPipelineUserToPushPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub 'MarketAllowPipelineUserPush'
+      Users:
+        - !Ref PipelineUser
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowLoginToDocker
+            Effect: Allow
+            Action: "ecr:GetAuthorizationToken"
+            Resource: "*"
+          - Sid: AllowPushPull
+            Effect: Allow
+            Action:
+              - "ecr:GetDownloadUrlForLayer"
+              - "ecr:BatchGetImage"
+              - "ecr:BatchCheckLayerAvailability"
+              - "ecr:PutImage"
+              - "ecr:InitiateLayerUpload"
+              - "ecr:UploadLayerPart"
+              - "ecr:CompleteLayerUpload"
+            Resource: !GetAtt MarketRepository.Arn
+
+Outputs:
+  MediaS3BucketName:
+    Value: !Ref MediaS3Bucket
+    Export:
+      Name: "MediaS3BucketName"
+
+  MediaS3BucketArn:
+    Value: !GetAtt MediaS3Bucket.Arn
+    Export:
+      Name: "MediaS3BucketArn"
+
+  RobotRepositoryUri:
+    Value: !GetAtt RobotRepository.RepositoryUri
+    Export:
+      Name: "RobotRepositoryUri"
+
+  MarketRepositoryUri:
+    Value: !GetAtt MarketRepository.RepositoryUri
+    Export:
+      Name: "MarketRepositoryUri"
+
+  PipelineUserAccessKey:
+    Value: !Ref PipelineUserAccessKey
+
+  PipelineUserSecret:
+    Value: !GetAtt PipelineUserAccessKey.SecretAccessKey

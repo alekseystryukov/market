@@ -1,0 +1,175 @@
+Description: This template deploys Risk Mitigation Engine via AWS Lambda
+
+Parameters:
+  ImageUri:
+    Type: String
+    Description: "App image uri"
+    Default: "987296473044.dkr.ecr.eu-central-1.amazonaws.com/market-robot:latest"
+  AppName:
+    Description: Application Name
+    Type: String
+    AllowedPattern: "^[a-zA-Z0-9]+$"
+    Default: "RobotTests"
+  EnvName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: "DEV"
+
+Resources:
+  # create ECS resources
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      ManagedPolicyArns: # download image & put logs permissions
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - sts:AssumeRole
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+
+  ECSTaskDefinition:
+    Type: 'AWS::ECS::TaskDefinition'
+    Properties:
+      Family: !Sub "${EnvName}${AppName}"
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: 512
+      Memory: 1024
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn  # this one needs to pull images and write logs
+      TaskRoleArn: !GetAtt ECSTaskExecutionRole.Arn  # this one is for app actions like secrets, event bus actions, etc
+      ContainerDefinitions:
+        - Name: robot-run
+          Image: !Ref ImageUri
+          Essential: true
+          Environment: # the same as in the lambda Environment.Variables but in a different format
+            - Name: AWS_ACCOUNT_ID
+              Value: !Ref "AWS::AccountId"
+            - Name: ENV_NAME
+              Value: !Ref EnvName
+            - Name: S3_STATIC_BUCKET
+              Value: "{{resolve:secretsmanager:RCCommonConfigSecret:SecretString:CommonPublicS3BucketName}}"
+            - Name: S3_STATIC_BUCKET_PREFIX
+              Value: !Sub "Market/${EnvName}/media"
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref ECSLogsLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: app
+
+  ECSLogsLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/ecs/${EnvName}/${AppName}"
+      RetentionInDays: 30
+
+  # allow pipeline user updating this stack
+  PipelineUserPermission:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub "${EnvName}${AppName}AllowPipelineUserUpdateStack"
+      Users:
+        - Fn::ImportValue: !Sub "RC${EnvName}${AppName}PipelineUser"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "cloudformation:DescribeStacks"
+              - "cloudformation:UpdateStack"
+            Resource: !Ref AWS::StackId
+          - Effect: Allow # all required permissions should be added to this role in 'common-resources' template
+            Action:
+              - "iam:PassRole"
+            Resource: "{{resolve:secretsmanager:RCCommonConfigSecret:SecretString:CloudformationRoleArn}}"
+
+  # scheduled command calls, 'Cron'
+  ScheduledRobotTestRunRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "Run robot tests"
+      Name: !Sub "${EnvName}${AppName}ScheduledRobotTestRunRule"
+      State: ENABLED
+      ScheduleExpression: "cron(0 17 ? * MON-FRI *)"
+      Targets:
+        - Arn:
+            Fn::ImportValue: 'RCClusterArn'
+          RoleArn: !GetAtt EventBridgeRunTaskRole.Arn
+          Id: !Sub "${EnvName}${AppName}ScheduledRobotRun"
+          EcsParameters:
+            TaskCount: 1
+            TaskDefinitionArn: !Ref ECSTaskDefinition
+            LaunchType: FARGATE
+            NetworkConfiguration:
+              AwsVpcConfiguration:
+                AssignPublicIp: DISABLED
+                Subnets:
+                  - "{{resolve:secretsmanager:RCCommonConfigSecret:SecretString:PrivateSubnetAZ0}}"
+                  - "{{resolve:secretsmanager:RCCommonConfigSecret:SecretString:PrivateSubnetAZ1}}"
+          DeadLetterConfig:
+            Arn: "{{resolve:secretsmanager:RCCommonConfigSecret:SecretString:DeadLetterQueueArn}}"
+
+  EventBridgeRunTaskRole: # used for target invocation from EventBridge
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: [ 'sts:AssumeRole' ]
+            Effect: Allow
+            Principal:
+              Service: [ events.amazonaws.com ]
+        Version: '2012-10-17'
+      Policies:
+        - PolicyName: !Sub "${AWS::StackName}EventTaskCallerPolicy"
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecs:RunTask
+                Resource:
+                  - "*"
+              - Effect: Allow
+                Action: iam:PassRole
+                Resource:
+                  - "*"
+                Condition:
+                  StringLike:
+                    iam:PassedToService: ecs-tasks.amazonaws.com
+
+  RoleAdditionalPermissions:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub "${EnvName}${AppName}RolePermissions"
+      Roles:
+        - !Ref ECSTaskExecutionRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: "secretsmanager:GetSecretValue"
+            Resource:
+              - Fn::ImportValue: !Sub "${EnvName}${AppName}EnvSecretArn"
+          - Effect: Allow
+            Action:
+              - "logs:CreateLogGroup"
+              - "logs:PutLogEvents"
+            Resource:
+              - !GetAtt ECSLogsLogGroup.Arn
+          - Effect: Allow
+            Action:
+              - "s3:ListBucket"
+            Resource: "{{resolve:secretsmanager:RCCommonConfigSecret:SecretString:CommonPublicS3BucketArn}}"
+          - Effect: Allow
+            Action:
+              - "s3:PutObject"
+              - "s3:PutObjectAcl"
+            Resource:
+              - !Sub "{{resolve:secretsmanager:RCCommonConfigSecret:SecretString:CommonPublicS3BucketArn}}/ttl21days/${AppName}/${EnvName}/*"

@@ -1,0 +1,155 @@
+.button-blue {
+  background-image: linear-gradient(#42A1EC, #0070C9);
+  border: 1px solid #0077CC;
+  border-radius: 4px;
+  box-sizing: border-box;
+  color: #FFFFFF;
+  cursor: pointer;
+  direction: ltr;
+  display: block;
+  font-family: "SF Pro Text","SF Pro Icons","AOS Icons","Helvetica Neue",Helvetica,Arial,sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: -.022em;
+  line-height: 1.47059;
+  min-width: 30px;
+  overflow: visible;
+  padding: 2px 10px;
+  text-align: center;
+  vertical-align: baseline;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  white-space: nowrap;
+}
+
+.button-blue:hover {
+  background-image: linear-gradient(#098bf1, #147BCD);
+  border-color: #1482D0;
+  text-decoration: none;
+}
+
+.button-blue:active {
+  background-image: linear-gradient(#3D94D9, #0067B9);
+  border-color: #006DBC;
+  outline: none;
+}
+
+.button-blue:focus {
+  box-shadow: rgba(131, 192, 253, 0.5) 0 0 0 3px;
+  outline: none;
+}
+
+.button-blue:disabled {
+  cursor: not-allowed;
+  background: rgb(23, 10, 10);
+  color: rgb(9, 139, 241);
+}
+
+.button-green {
+  background-image: linear-gradient(#36b71a, #16a404);
+  border: 1px solid #0d7710;
+  border-radius: 4px;
+  box-sizing: border-box;
+  color: #FFFFFF;
+  cursor: pointer;
+  direction: ltr;
+  display: block;
+  font-family: "SF Pro Text","SF Pro Icons","AOS Icons","Helvetica Neue",Helvetica,Arial,sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: -.022em;
+  line-height: 1.47059;
+  min-width: 30px;
+  overflow: visible;
+  padding: 2px 10px;
+  text-align: center;
+  vertical-align: baseline;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  white-space: nowrap;
+}
+
+.button-green:hover {
+  background-image: linear-gradient(#04bd12, #10b704);
+  border-color: #6bc763;
+  text-decoration: none;
+}
+
+.button-green:active {
+  background-image: linear-gradient(#43bb35, #05c909);
+  border-color: #00bc03;
+  outline: none;
+}
+
+.button-green:focus {
+  box-shadow: rgba(143, 253, 131, 0.5) 0 0 0 3px;
+  outline: none;
+}
+
+.button-green:disabled {
+  cursor: not-allowed;
+  background: rgb(23, 10, 10);
+  color: rgb(201, 198, 198);
+}
+
+
+.button-gray {
+  background-image: linear-gradient(#e2e3e2, #cacbc9);
+  border: 1px solid #a1a2a1;
+  border-radius: 4px;
+  box-sizing: border-box;
+  color: #170a0a;
+  cursor: pointer;
+  direction: ltr;
+  display: block;
+  font-family: "SF Pro Text","SF Pro Icons","AOS Icons","Helvetica Neue",Helvetica,Arial,sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: -.022em;
+  line-height: 1.47059;
+  min-width: 30px;
+  overflow: visible;
+  padding: 2px 10px;
+  text-align: center;
+  vertical-align: baseline;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  white-space: nowrap;
+}
+
+.button-gray:hover {
+  background-image: linear-gradient(#c0c2c0, #b1b2b1);
+  border-color: #c2cbc1;
+  text-decoration: none;
+}
+
+.button-gray:active {
+  background-image: linear-gradient(#b9beb8, #bfc0bf);
+  border-color: #cecece;
+  outline: none;
+}
+
+.button-gray:focus {
+  box-shadow: rgb(203, 199, 199) 0 0 0 3px;
+  outline: none;
+}
+
+.button-gray:disabled {
+  cursor: not-allowed;
+  background: rgb(23, 10, 10);
+  color: rgb(209, 210, 209);
+}
+
+
+.button-red {
+  background: var(--delete-button-bg);
+  border-radius: 4px;
+  color: var(--button-fg);
+}
+
+.button-red:focus, .button-red:hover, .button-red:active {
+    background: var(--delete-button-hover-bg);
+}

@@ -1,0 +1,7 @@
+[run]
+omit =
+    */migrations/*
+    market/settings/*
+    */tests.py
+    */tests/*
+    manage.py

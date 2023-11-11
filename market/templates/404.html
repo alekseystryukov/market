@@ -1,0 +1,25 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Page Not Found</title>
+    <link rel="stylesheet" type="text/css" href="{% static 'css/page_404.css' %}">
+</head>
+<body>
+
+<img src="{% static 'images/page_404.gif' %}" alt="404"/>
+<h2 class="error-text">Whoops, We can't seem to find the resource you're looking for.</h2>
+<h1 class="project-info">{{ project_name }}: {{ settings.PROJECT_VERSION }}</h1>
+
+<div class="back-btn">
+    {% if user.is_staff %}
+        <a class="back-link" href="{% url 'admin:index' %}">Back to Admin Panel</a>
+    {% else %}
+        {# TODO: add correct URL #}
+        <a class="back-link" href="/">Back to Start Page</a>
+    {% endif %}
+</div>
+
+</body>
+</html>

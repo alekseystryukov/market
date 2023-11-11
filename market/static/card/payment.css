@@ -1,0 +1,9 @@
+
+ul.errorlist {
+    list-style-type: none;
+    margin-top: 0.5rem;
+    padding-inline-start: 0.5rem;
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+}

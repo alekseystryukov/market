@@ -1,0 +1,42 @@
+{% extends 'admin/change_form.html' %}
+
+{% block field_sets %}
+    {% for fieldset in adminform %}
+        {# this is a custom template, not from Django library #}
+        {% include "admin/fieldset.html" %}
+    {% endfor %}
+{% endblock field_sets %}
+
+
+{% block admin_change_form_document_ready %}
+    {{ block.super }}
+    <script type="text/javascript">
+        window.jQuery = window.$ = django.jQuery;
+        $(document).ready(function () {
+
+            function paginatorAction(e) {
+                const element = $(e.target)
+                const isCollapseButton = element.hasClass('collapse-toggle')
+
+                if (isCollapseButton && element.text() === "Show") {
+                    e.data.currentPaginator.show()
+                } else if (isCollapseButton && element.text() === "Hide") {
+                    e.data.currentPaginator.hide()
+                }
+            }
+
+            $(".admin-tabular-inline-pagination").each(function () {
+                const thisPagination = $(this)
+                let inline = thisPagination.prev().find('fieldset.module.collapse')
+                let module = $('fieldset.module')
+
+                if (module.hasClass('collapse')) {
+                    inline.on('click', {'currentPaginator': thisPagination}, paginatorAction)
+                    thisPagination.hide()
+                } else {
+                    thisPagination.show()
+                }
+            })
+        });
+    </script>
+{% endblock %}

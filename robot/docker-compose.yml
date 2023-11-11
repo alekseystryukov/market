@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  robot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+#    command: ["/usr/bin/python3", "/opt/robotframework/tests/awscli.py"]
+    command: ["sh","-c", "run-tests-in-virtual-screen.sh"]
+    env_file:
+      - .env
+    volumes:
+      - ./bin/get_env.py:/opt/robotframework/bin/get_env.py
+      - ./bin/post_run.py:/opt/robotframework/bin/post_run.py
+      - ./tests:/opt/robotframework/tests
+      - ./reports:/opt/robotframework/reports
+

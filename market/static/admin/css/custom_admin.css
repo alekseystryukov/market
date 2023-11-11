@@ -1,0 +1,149 @@
+.login #header {
+    background: #417690;
+}
+
+.login #header {
+    background: linear-gradient(to right, #7cfc00, #417690, #417690);
+}
+
+.theme-toggle {
+    color: #41768f;
+}
+
+html[data-theme="light"],
+:root {
+    --primary: #79aec8;
+    --secondary: #417690;
+    --accent: #0c0707;
+    --primary-fg: #fff;
+
+    --body-fg: #333;
+    --body-bg: #fff;
+    --body-quiet-color: #666;
+    --body-loud-color: #000;
+
+    --header-color: #ffc;
+    --header-branding-color: var(--accent);
+    --header-bg: linear-gradient(to right, #7cfc00, #417690, #417690);
+    --header-link-color: var(--primary-fg);
+
+    --breadcrumbs-fg: #c4dce8;
+    --breadcrumbs-link-fg: var(--body-bg);
+    --breadcrumbs-bg: var(--primary);
+
+    --link-fg: #447e9b;
+    --link-hover-color: #0c0707;
+    --link-selected-fg: #5b80b2;
+
+    --hairline-color: #e8e8e8;
+    --border-color: #ccc;
+
+    --error-fg: #ba2121;
+
+    --message-success-bg: #dfd;
+    --message-warning-bg: #ffc;
+    --message-error-bg: #ffefef;
+
+    --darkened-bg: #f8f8f8; /* A bit darker than --body-bg */
+    --selected-bg: #e4e4e4; /* E.g. selected table cells */
+    --selected-row: linear-gradient(45deg, #7cfc00 10%, #fff);
+
+    --button-fg: #fff;
+    --button-bg: var(--primary);
+    --button-hover-bg: #609ab6;
+    --default-button-bg: var(--secondary);
+    --default-button-hover-bg: #205067;
+    --close-button-bg: #888; /* Previously #bbb, contrast 1.92 */
+    --close-button-hover-bg: #098d55;
+    --delete-button-bg: #ba2121;
+    --delete-button-hover-bg: #a41515;
+
+    --object-tools-fg: var(--button-fg);
+    --object-tools-bg: #1a8c90;
+    --object-tools-hover-bg: #228b22;
+}
+
+html[data-theme="dark"] {
+    --primary: #264b5d;
+    --primary-fg: #f7f7f7;
+
+    --body-fg: #eeeeee;
+    --body-bg: #121212;
+    --body-quiet-color: #e0e0e0;
+    --body-loud-color: #ffffff;
+
+    --breadcrumbs-link-fg: #e0e0e0;
+    --breadcrumbs-bg: var(--primary);
+
+    --link-fg: #81d4fa;
+    --link-hover-color: #FFFFFFFF;
+    --link-selected-fg: #6f94c6;
+
+    --hairline-color: #272727;
+    --border-color: #353535;
+
+    --error-fg: #e35f5f;
+    --message-success-bg: #006b1b;
+    --message-warning-bg: #583305;
+    --message-error-bg: #570808;
+
+    --darkened-bg: #212121;
+    --selected-bg: #1b1b1b;
+    --selected-row: linear-gradient(45deg, #228b22 10%, #111618);
+
+    --close-button-bg: #333333;
+    --object-tools-bg: #594f6c;
+    --close-button-hover-bg: #228b22;
+}
+
+#user-tools, #branding h1 a:visited, #header a:visited, #header a:link{
+    color: black;
+}
+
+.dot::before {
+    content: '';
+    display: inline-block;
+    height: 13px;
+    width: 13px;
+    border-radius: 50%;
+    vertical-align: -10%;
+}
+
+.dot.danger-dot::before {
+    background-color: red;
+}
+
+.dot.warning-dot::before {
+    background-color: orange;
+}
+
+.dot.success-dot::before {
+    /* This color value was taken from 'fill' value of 'admin/img/icon-yes.svg' */
+    background-color: #70bf2b;
+}
+
+.admin-table {
+    table-layout: fixed;
+    width: 100%;
+    overflow-wrap: break-word;
+}
+
+.admin-table th,
+.admin-table td {
+    border: 1px solid var(--border-color);
+}
+
+.admin-table thead tr th:first-child,
+.admin-table tbody tr td:first-child {
+    width: 10%;
+    max-width: 10%;
+}
+
+.admin-table .column-matching {
+    line-height: 20px;
+}
+
+.admin-table .button-score-field-change {
+    width: 150px;
+    padding: 7px 5px;
+}
