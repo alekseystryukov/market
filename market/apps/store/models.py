@@ -121,7 +121,7 @@ ORDER_STATUS_CHOICES = [
 
 
 class Order(models.Model):
-    id = models.CharField(primary_key=True, max_length=256, default=generate_order_id)
+    id = models.CharField(primary_key=True, max_length=32, default=generate_order_id)
     store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name='orders')
     cart = models.ForeignKey('cart.Cart', on_delete=models.CASCADE, related_name='orders')
     status = models.PositiveSmallIntegerField(choices=ORDER_STATUS_CHOICES, default=0)

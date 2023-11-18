@@ -4,8 +4,14 @@ from .models import Cart, CartItem
 from .forms import OrderSubmitForm
 from django.views.generic import TemplateView, FormView
 from django.db.transaction import atomic
-from django.core.exceptions import ObjectDoesNotExist
-from django.contrib.auth.decorators import login_required
+from django.core.mail import send_mail
+from django.template import loader
+from django.conf import settings
+from django.urls import reverse
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 SESSION_CART_KEY = "cart_id"
 
@@ -152,7 +158,7 @@ class PlaceOrderView(FormView):
                         note=data["note"],
                         total=total,
                     )
-                    OrderItem.objects.bulk_create([
+                    order_items = OrderItem.objects.bulk_create([
                         OrderItem(
                             order=order,
                             product=i.product,
@@ -162,7 +168,34 @@ class PlaceOrderView(FormView):
                         for i in cart_items
                     ])
                     store_items.delete()
-                return redirect('cart:order_details', order_id=order.id)
+
+                order_url = request.build_absolute_uri(
+                    reverse('cart:order_details', kwargs=dict(order_id=order.id))
+                )
+                store_user_emails = order.store.users.all().values_list("email", flat=True)
+                if not store_user_emails:
+                    logger.error(f"{order.store} has not managers")
+                else:
+                    html_message = loader.render_to_string(
+                        'cart/order_email.html',
+                        dict(
+                            order=order,
+                            order_url=order_url,
+                            order_admit_url=request.build_absolute_uri(
+                                reverse('admin:store_order_change', kwargs=dict(object_id=order.id))
+                            ),
+                            order_items=order_items,
+                        )
+                    )
+                    r = send_mail(
+                        subject=f"New order #{order.id[:4]}",
+                        message=f"\nYou have a new order {order_url}",
+                        html_message=html_message,
+                        from_email=settings.EMAIL_NO_REPLY_FROM,
+                        recipient_list=store_user_emails,
+                        fail_silently=False,
+                    )
+                return redirect(order_url)
             return redirect('home')
         return self.form_invalid(form)
 

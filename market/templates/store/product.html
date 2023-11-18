@@ -30,7 +30,7 @@
 						<li>
 							<a href="{{ product.image.url }}" target="mainImage"><img src="{{ product.image.url }}" alt="Product Image"></a>
 							{% for i in product.images.all %}
-							<a href="{{i.file.url}}" target="mainImage"><img src="{{i.file.url}}" alt="Product Image"></a>
+							<a href="{{ i.file.url }}" target="mainImage"><img src="{{ i.file.url }}" alt="Product Image"></a>
 							{% endfor %}
 						</li>
 					</ul>

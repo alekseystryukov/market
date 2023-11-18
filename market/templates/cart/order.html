@@ -68,7 +68,7 @@
                 <div class="form-row">
                   <div class="col form-group">
                     <label for="id_phone">Phone Number</label>
-                    <input type="text" name="phone" id="id_phone" class="form-control" value="{{ form.phone.value|default_if_none:'' }}" >
+                    <input type="text" name="phone" id="id_phone" class="form-control" value="{{ form.phone.value|default_if_none:'' }}">
                     {{ form.phone.errors }}
                   </div>
                 </div>
