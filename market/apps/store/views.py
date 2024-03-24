@@ -1,4 +1,5 @@
 from django.shortcuts import render, get_object_or_404, redirect
+from django.http import Http404
 from .models import Product, Store
 from apps.core.models import Category
 from django.db.models import Q
@@ -62,8 +63,15 @@ def store_view(request, store_id, category_slug=None):
     return render(request, 'store/store.html', context)
 
 
-def product_details(request, store_id, product_slug):
-    product = get_object_or_404(Product, store_id=store_id, slug=product_slug)
+def product_details_deprecated(request, store_id, product_slug):
+    product = Product.objects.filter(store_id=store_id, slug=product_slug).last()
+    if product is None:
+        raise Http404("Product not found.")
+    return redirect("store:product_details", store_id=store_id, product_id=product.id, product_slug=product.slug)
+
+
+def product_details(request, store_id, product_id, product_slug):
+    product = get_object_or_404(Product, store_id=store_id, id=product_id)
 
     # in_cart = CartItem.objects.filter(cart__cart_id=_cart_id(request), product=single_product).exists()
     # if request.user.is_authenticated:

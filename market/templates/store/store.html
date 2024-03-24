@@ -1,11 +1,19 @@
 {% extends 'base.html' %}
 {% load static %}
 
+
+{% block head %}
+{{ block.super }}
+<link rel="canonical" href="{% url 'store:store' store.id %}" />
+{% endblock %}
+
+
+
 {% block content %}
 <!-- ========================= SECTION PAGETOP ========================= -->
 <section class="p-4 bg">
 	<h3 class="container" >
-		<a href="{{ stor.get_url }}" class="brand-wrap">
+		<a href="{{ store.get_url }}" class="brand-wrap">
 			<img class="logo"  src="{{ store.logo.url }}">
 			{{ store.name }}
 		</a>

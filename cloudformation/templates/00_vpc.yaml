@@ -108,6 +108,11 @@ Outputs:
     Export:
       Name: "VPC"
 
+  VpcCIDR:
+    Value: !Ref VpcCIDR
+    Export:
+      Name: "VpcCIDR"
+
   PublicSubnet1:
     Value: !Ref PublicSubnet1
     Export:

@@ -3,6 +3,13 @@
 {% extends 'base.html' %}
 {% load static %}
 
+
+{% block head %}
+{{ block.super }}
+<link rel="canonical" href="{% url 'store:store' 1 %}" />
+{% endblock %}
+
+
 {% block content %}
 
 

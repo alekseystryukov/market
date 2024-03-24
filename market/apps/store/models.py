@@ -6,10 +6,12 @@ from django.conf import settings
 from django.contrib.postgres.indexes import GinIndex
 from django.contrib.postgres.search import SearchVector
 from uuid import uuid4
-from datetime import datetime
+from datetime import datetime, timedelta
+from django.core.serializers.json import DjangoJSONEncoder
 import logging
 import secrets
 import string
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +70,7 @@ class Product(models.Model):
     def get_absolute_url(self):
         kwargs = {
             'store_id': self.store_id,
+            'product_id': self.id,
             'product_slug': self.slug,
         }
         return reverse('store:product_details', kwargs=kwargs)
@@ -93,6 +96,52 @@ class Product(models.Model):
             search=SearchVector("name", "description"),  # GinIndex
         ).filter(search=search)
         return qs
+
+    def get_json_ld(self):
+        host_name = settings.CSRF_TRUSTED_ORIGINS[0] if settings.CSRF_TRUSTED_ORIGINS else ""
+        result = {
+            "@context": "https://schema.org/",
+            "@type": "Product",
+            "name": self.name,
+            "image": [
+                i.file.url
+                for i in self.images.all()
+            ],
+            "description": self.description,
+            "sku": self.id,
+            # "mpn": "925872",
+            # "brand": {
+            #     "@type": "Brand",
+            #     "name": "ACME"
+            # },
+            # "review": {
+            #     "@type": "Review",
+            #     "reviewRating": {
+            #         "@type": "Rating",
+            #         "ratingValue": 4,
+            #         "bestRating": 5
+            #     },
+            #     "author": {
+            #         "@type": "Person",
+            #         "name": "Fred Benson"
+            #     }
+            # },
+            # "aggregateRating": {
+            #     "@type": "AggregateRating",
+            #     "ratingValue": 4.4,
+            #     "reviewCount": 89
+            # },
+            "offers": {
+                "@type": "Offer",
+                "url": host_name + self.get_absolute_url(),
+                "priceCurrency": "UAH",
+                "price": self.price,
+                "priceValidUntil": (datetime.now() + timedelta(days=5)).date().isoformat(),
+                "itemCondition": "https://schema.org/UsedCondition",
+                "availability": "https://schema.org/InStock"
+            }
+        }
+        return json.dumps(result, cls=DjangoJSONEncoder, ensure_ascii=False)
 
 
 class ProductImage(models.Model):
@@ -124,7 +173,7 @@ class Order(models.Model):
     id = models.CharField(primary_key=True, max_length=32, default=generate_order_id)
     store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name='orders')
     cart = models.ForeignKey('cart.Cart', on_delete=models.CASCADE, related_name='orders')
-    status = models.PositiveSmallIntegerField(choices=ORDER_STATUS_CHOICES, default=0)
+    status = models.PositiveSmallIntegerField(choices=ORDER_STATUS_CHOICES, default=0, db_index=True)
     note = models.TextField(max_length=1000, blank=True)
     created = models.DateField(auto_now_add=True)
     total = models.DecimalField(max_digits=12, decimal_places=2, default=0)

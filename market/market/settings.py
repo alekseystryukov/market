@@ -35,6 +35,8 @@ DEBUG = to_bool(os.getenv('DEBUG'))  # turned off by default
 ALLOWED_HOSTS = to_list(os.getenv('ALLOWED_HOSTS'))
 if ALLOWED_HOSTS and "*" not in ALLOWED_HOSTS:
     CSRF_TRUSTED_ORIGINS = [f"https://{h}" for h in ALLOWED_HOSTS]
+else:
+    CSRF_TRUSTED_ORIGINS = []
 
 INSTALLED_APPS = [
     'django.contrib.admin',

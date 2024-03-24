@@ -75,7 +75,7 @@ Download Img
 Get Product
     [Arguments]    ${url}
     New Page   ${url}
-    Sleep  2s
+    Sleep  3s
 
     ${uuid}  Evaluate  "${url}".split("/")[-1].split(".")[0]
     ${name}  Get Text  h1[data-qaid="product_name"]
@@ -89,8 +89,8 @@ Get Product
     END
 
 
-    ${price}  Get Attribute  div[data-qaid="product_price"]  data-qaprice
-    ${currency}  Get Attribute  div[data-qaid="product_price"]  data-qacurrency
+    ${price}  Get Attribute  div[data-qaid="main_product_info"] >> div[data-qaid="product_price"]  data-qaprice
+    ${currency}  Get Attribute  div[data-qaid="main_product_info"] >> div[data-qaid="product_price"]  data-qacurrency
     ${description_html}  Get Property  div[data-qaid="descriptions"]   innerHTML
     ${matches}  Find Images In Text   ${description_html}
     FOR  ${match}  IN  @{matches}
@@ -152,7 +152,7 @@ Get Store
     WHILE  ${True}  # wait for BREAK
         # scroll  to load all elements on screen
         Scroll To Element  div[data-qaid="product_gallery"]
-        Sleep  2
+        Sleep  2s
         Scroll Store To Pagination
 
         # get all products from this page

@@ -36,13 +36,13 @@ Resources:
             MaxAge: 3600
 
 
-  RobotRepository:
-    Type: AWS::ECR::Repository
-    Properties:
-      RepositoryName: market-robot
-#      ImageTagMutability: "IMMUTABLE"
-      ImageScanningConfiguration:
-        ScanOnPush: false
+#  RobotRepository:
+#    Type: AWS::ECR::Repository
+#    Properties:
+#      RepositoryName: market-robot
+##      ImageTagMutability: "IMMUTABLE"
+#      ImageScanningConfiguration:
+#        ScanOnPush: false
 
   MarketRepository:
     Type: AWS::ECR::Repository
@@ -93,6 +93,21 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AdministratorEmailAddress
 
+  ECSServiceLinkedRoleRole: # Required to create Cluster. I do not want it to be used anywhere
+    Type: AWS::IAM::Role
+    Properties:
+      ManagedPolicyArns: # download image & put logs permissions
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - sts:AssumeRole
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+
 Outputs:
   MediaS3BucketName:
     Value: !Ref MediaS3Bucket
@@ -109,10 +124,10 @@ Outputs:
     Export:
       Name: "MediaS3BucketUrl"
 
-  RobotRepositoryUri:
-    Value: !GetAtt RobotRepository.RepositoryUri
-    Export:
-      Name: "RobotRepositoryUri"
+#  RobotRepositoryUri:
+#    Value: !GetAtt RobotRepository.RepositoryUri
+#    Export:
+#      Name: "RobotRepositoryUri"
 
   MarketRepositoryUri:
     Value: !GetAtt MarketRepository.RepositoryUri

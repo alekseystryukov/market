@@ -35,6 +35,7 @@ class ProductAdmin(admin.ModelAdmin):
     list_select_related = (
         'category', 'store',
     )
+    list_filter = ["store", "category"]
 
 
 class OrderItemInline(admin.TabularInline):
@@ -48,6 +49,7 @@ class OrderAdmin(admin.ModelAdmin):
     list_display = ('id', 'status', 'created')
     fields = ("id", "created", "total", "status")
     readonly_fields = ("id", "created", "total")
+    list_filter = ["status"]
 
     inlines = [OrderItemInline]
 

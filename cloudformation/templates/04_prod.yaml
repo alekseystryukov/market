@@ -1,10 +1,12 @@
 Description: This template deploys Risk Mitigation Engine via AWS Lambda
 
 Parameters:
+  PublicListenerCertificateArn:
+    Type: String
+    Default: ""
   ImageUri:
     Type: String
     Description: "App image uri"
-    Default: "987296473044.dkr.ecr.eu-central-1.amazonaws.com/market-api:latest"
   AppName:
     Description: Application Name
     Type: String
@@ -36,12 +38,152 @@ Parameters:
   EmailHostPass:
     Type: String
 
+
+Conditions:
+  EnableSecureListener: !Not
+    - !Equals
+      - !Ref PublicListenerCertificateArn
+      - ""
+
 Resources:
+  # LOAD BALANCER
+  # security groups
+  IngressSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Security group with an ingress rule"
+      VpcId:
+        Fn::ImportValue: "VPC"
+      SecurityGroupIngress:
+        - FromPort: 80
+          ToPort: 80
+          IpProtocol: tcp
+          CidrIp: 0.0.0.0/0
+        - FromPort: 443
+          ToPort: 443
+          IpProtocol: tcp
+          CidrIp: 0.0.0.0/0
+
+  PublicAppLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internet-facing
+      Subnets:
+        - Fn::ImportValue: 'VPCPublicSubnet1'
+        - Fn::ImportValue: 'VPCPublicSubnet2'
+      SecurityGroups:
+        - !Ref IngressSecurityGroup
+
+  PublicTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub "${EnvName}${AppName}Public"
+      HealthCheckPath: /ping/
+      Port: 8000
+      Protocol: HTTP
+      TargetType: ip
+      VpcId:
+        Fn::ImportValue: "VPC"
+
+  PublicInsecureListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref PublicAppLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+#        - Type: forward
+#          TargetGroupArn: !Ref PublicTargetGroup
+        - Type: fixed-response
+          FixedResponseConfig:
+            ContentType: text/plain
+            MessageBody: "Forbidden"
+            StatusCode: 403
+
+  PublicInsecureListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref PublicTargetGroup
+      Conditions:
+        - Field: host-header
+          HostHeaderConfig:
+            Values:
+              - !Ref AllowedHosts
+      ListenerArn: !Ref PublicInsecureListener
+      Priority: 1
+
+
+  PublicSecureListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Condition: EnableSecureListener
+    Properties:
+      LoadBalancerArn: !Ref PublicAppLoadBalancer
+      Port: 443
+      Protocol: HTTPS
+      SslPolicy: "ELBSecurityPolicy-TLS13-1-2-2021-06"  # this is recommended value, but not default value
+      Certificates:
+        - CertificateArn: !Ref PublicListenerCertificateArn
+      DefaultActions:
+#        - Type: forward
+#          TargetGroupArn: !Ref PublicTargetGroup
+        - Type: fixed-response
+          FixedResponseConfig:
+            ContentType: text/plain
+            MessageBody: "Forbidden"
+            StatusCode: 403
+
+  PublicSecureListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref PublicTargetGroup
+      Conditions:
+        - Field: host-header
+          HostHeaderConfig:
+            Values:
+              - !Ref AllowedHosts
+      ListenerArn: !Ref PublicSecureListener
+      Priority: 1
+
+
+#  SecureListenerRule:
+#    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+#    Condition: EnableSecureListener
+#    Properties:
+#      Conditions:
+#        - Field: http-header
+#          HttpHeaderConfig:
+#            HttpHeaderName: User-Agent
+#            Values:
+#              - "*"
+#      Actions:
+#        - Type: forward
+#          TargetGroupArn: !Ref PublicTargetGroup
+#      ListenerArn: !Ref PublicSecureListener
+#      Priority: 1
+#
+#  InSecureListenerRule:
+#    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+#    Properties:
+#      Conditions:
+#        - Field: http-header
+#          HttpHeaderConfig:
+#            HttpHeaderName: User-Agent
+#            Values:
+#              - "*"
+#      Actions:
+#        - Type: forward
+#          TargetGroupArn: !Ref PublicTargetGroup
+#      ListenerArn: !Ref PublicInsecureListener
+#      Priority: 1
+
   # create ECS resources
   # ECS cluster for all the services and tasks
   Cluster:
     Type: AWS::ECS::Cluster
-    DependsOn: ECSServiceLinkedRoleRole
     Properties:
       ClusterName: 'MarketCluster'
       CapacityProviders:
@@ -52,21 +194,6 @@ Resources:
           Weight: 1
         - CapacityProvider: FARGATE_SPOT
           Weight: 1
-
-  ECSServiceLinkedRoleRole:  # Required to create Cluster. I do not want it to be used anywhere
-    Type: AWS::IAM::Role
-    Properties:
-      ManagedPolicyArns: # download image & put logs permissions
-        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - sts:AssumeRole
-            Principal:
-              Service:
-                - ecs-tasks.amazonaws.com
 
   ContainerIngressSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -79,7 +206,8 @@ Resources:
         FromPort: 8000
         ToPort: 8000
         IpProtocol: tcp
-        CidrIp: 0.0.0.0/0
+        CidrIp:
+          Fn::ImportValue: 'VpcCIDR'  # container can be accessed by Load Balancer
 
   ECSTaskExecutionRole:
     Type: AWS::IAM::Role
@@ -180,6 +308,7 @@ Resources:
     Type: AWS::ECS::Service
     DependsOn:
       - RoleAdditionalPermissions  # service need all the permissions to run (it runs while being created)
+      - PublicInsecureListener
     Properties:
       Cluster: !Ref Cluster
       LaunchType: FARGATE
@@ -188,6 +317,10 @@ Resources:
       SchedulingStrategy: REPLICA
       ServiceName: !Sub "${EnvName}${AppName}Service"
       TaskDefinition: !Ref ECSTaskDefinition
+      LoadBalancers:
+        - TargetGroupArn: !Ref PublicTargetGroup
+          ContainerPort: 8000
+          ContainerName: app
       NetworkConfiguration:
         AwsvpcConfiguration:
           AssignPublicIp: ENABLED
@@ -309,3 +442,4 @@ Resources:
               - "SNS:Publish"
             Resource:
               Fn::ImportValue: 'ErrorsEmailSNSTopicArn'
+
