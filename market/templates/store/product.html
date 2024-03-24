@@ -54,12 +54,19 @@
 
 							<div class="mb-3">
 								<span>
-									Продавець: <a href="{% url 'store:store' product.store.id %}">{{ product.store.name }}</a>
+									Продавець:
+									<a href="{% url 'store:store' product.store.id %}">{{ product.store.name }}</a>
+									{% if product.store.phone %}
+									<br/><br/>
+									Подзвонити:
+									<a class="container" href="tel:{{ product.store.phone }}">{{ product.store.phone }}</a>
+									<br/><br/>
+									{% endif %}
 								</span>
 							</div>
 
 							{% if product.is_active %}
-							<button type="submit" class="btn  btn-primary"> <span class="text">Add to Cart</span> <i class="fa fa-shopping-cart"></i> </button>
+							<button type="submit" class="btn  btn-primary"> <span class="text">Додати до замовлення</span> <i class="fa fa-shopping-cart"></i> </button>
 							{% else %}
 							<h5 class="text-danger">Наразі недоступне для замовлення</h5>
 

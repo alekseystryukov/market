@@ -16,8 +16,14 @@
 		<a href="{{ store.get_url }}" class="brand-wrap">
 			<img class="logo"  src="{{ store.logo.url }}">
 			{{ store.name }}
+			{% if store.phone %}
+			<small>
+				<a class="container" href="tel:{{ store.phone }}">{{ store.phone }}</a>
+			</small>
+			{% endif %}
 		</a>
 	</h3> <!-- container //  -->
+
 </section>
 <!-- ========================= SECTION INTRO END// ========================= -->
 

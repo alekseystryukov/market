@@ -21,7 +21,9 @@ ${store_id}   %{STORE_ID}
 ${store_url}   %{STORE_URL}
 ${product_url}   %{PRODUCT_URL}
 ${user_agent}   %{USER_AGENT}
+${cid_cookie}   %{CID_COOKIE}
 ${ccc_cookie}   %{CCC_COOKIE}
+${auth_cookie}   %{AUTH_COOKIE}
 ${ccc_cookie_domain}   %{CCC_COOKIE_DOMAIN}
 
 
@@ -29,7 +31,9 @@ ${ccc_cookie_domain}   %{CCC_COOKIE_DOMAIN}
 Setup context
     New Context  userAgent=${user_agent}  locale=uk
 
-    Add Cookie   ccc  ${ccc_cookie}  domain=${ccc_cookie_domain}  path=/
+#    Add Cookie   ccc  ${ccc_cookie}  domain=${ccc_cookie_domain}  path=/
+    Add Cookie   cid  ${cid_cookie}  domain=${ccc_cookie_domain}  path=/
+    Add Cookie   auth  ${auth_cookie}  domain=${ccc_cookie_domain}  path=/
     Set Browser Timeout  30s
     Create Directory  ${data_dir}
     Create Directory  ${img_dir}

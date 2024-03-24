@@ -29,6 +29,7 @@ def logo_file_name(instance, filename):
 
 class Store(models.Model):
     name = models.CharField(max_length=200, unique=True)
+    phone = models.CharField(max_length=64, null=True, blank=True)
     description = models.TextField(max_length=1000, blank=True)
     logo = models.ImageField(upload_to=logo_file_name)
     created = models.DateTimeField(auto_now_add=True)
